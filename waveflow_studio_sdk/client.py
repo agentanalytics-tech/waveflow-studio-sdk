@@ -7,7 +7,7 @@ class InvalidAPIKeyError(Exception):
     pass
 
 class WaveFlowStudio:
-    def __init__(self, api_key: str, base_url: str = "http://3.92.146.100:8000"):
+    def __init__(self, api_key: str, base_url: str = "http://3.92.146.100:5000"):
         """
         Initialize SDK with API key and validate.
         """
@@ -25,9 +25,9 @@ class WaveFlowStudio:
 
         try:
             response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                user_id = data.get("valid")
+            res = response.json()
+            if res.get("status_code") == 200:
+                user_id = res.get("content").get("valid")
                 if not user_id:
                     raise InvalidAPIKeyError("API key not associated with any user.")
                 return 
@@ -48,17 +48,22 @@ class WaveFlowStudio:
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
         try:
-            with open(json_file_path, "rb") as file:
-                files = {"file": (json_file_path, file, "application/json")}
-                # No user_id in form data
-                response = requests.post(url, headers=headers, files=files)
+            with open(json_file_path, 'r') as file:
+                json_data = json.load(file)
+                # print("file_content",json_data)
+
+            body = {
+                "agents_data" : json_data
+            }
+            response = requests.post(url, headers=headers, json = body)
             
             resp_json = response.json()
+            # print("this is response :",resp_json)
             if resp_json.get("workflow_id"):
                 self.workflow_id = resp_json["workflow_id"]
             return resp_json
         except Exception as e:
-            print(str(e))
+            # print(str(e))
             return {"error": str(e)}
 
 
@@ -70,7 +75,7 @@ class WaveFlowStudio:
         if not self.workflow_id:
             return {"error": "Workflow not created. Call create_workflow first."}
 
-        url = f"{self.base_url}/chat-workflow"
+        url = f"{self.base_url}/workflow-run-chat-pdf-sdk"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         data = {
             "workflow_id": self.workflow_id,
@@ -79,8 +84,24 @@ class WaveFlowStudio:
         }
 
         try:
-            response = requests.post(url, headers=headers, data=data)
+            response = requests.post(url, headers=headers, json=data)
             data = response.json()
-            return {"answer": data.get("answer"), "conversation":data.get("conversation")}
+            # print(data)
+            return {"answer": data.get("final_answer"), "conversation":data.get("conversation"), "citation": data.get("citation")}
+        except Exception as e:
+            return {"error": str(e)}
+        
+    def get_history(self):
+        url = f"{self.base_url}/get-session-history"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        data = {
+            "session_id": self.workflow_id,
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            data = response.json()
+            # print(data)
+            return data
         except Exception as e:
             return {"error": str(e)}
