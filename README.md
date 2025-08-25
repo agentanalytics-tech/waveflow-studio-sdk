@@ -16,7 +16,7 @@ install from source:
 
 ```bash
 git clone https://github.com/agentanalytics-tech/waveflow-studio-sdk.git
-cd waveflow-studio-sdk
+cd waveflow_studio_sdk
 python setup.py install
 pip install .
 ```
@@ -26,7 +26,7 @@ pip install .
 Here's a simple example to get you started:
 
 ```python
-from waveflow_studio import WaveFlowStudio
+from waveflow_studio_sdk import WaveFlowStudio
 
 # Initialize the client
 client = WaveFlowStudio(
@@ -140,7 +140,7 @@ Check out the `examples/` directory for more comprehensive usage examples:
 ```bash
 # Clone the repository
 git clone https://github.com/agentanalytics-tech/waveflow-studio-sdk.git
-cd waveflow-studio-sdk
+cd waveflow_studio_sdk
 
 # Create virtual environment
 python -m venv venv
@@ -148,7 +148,6 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install in development mode
 pip install -e .
-
 
 
 Made with ❤️ for the AgentAnalytics.AI family
