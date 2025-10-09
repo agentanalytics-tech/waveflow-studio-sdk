@@ -1,4 +1,11 @@
-build\lib\waveflow_studio_sdk
-waveflow_studio_sdk.egg-info/
-__pycache__/
+# Ignore build artifacts
+build/
+waveflow_studio_sdk.egg-info
+
+# Ignore test file
 test.py
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
