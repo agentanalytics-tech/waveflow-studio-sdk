@@ -30,12 +30,12 @@ from waveflow_studio_sdk import WaveFlowStudio
 
 # Initialize the client
 client = WaveFlowStudio(
-    api_key="AAAI-WFS-8c8d194b-78e7-4878-b881-8a3b39cd9479",
-    base_url="http://127.0.0.1:5000/" # optional
+    api_key="your-api-key-here",
+    base_url="http://your-server-url:8000" # optional
 )
 
 # Create a workflow from JSON file
-result = client.create_workflow("C:\Users\Agent\Downloads\workflow.json")
+result = client.create_workflow("path/to/your/workflow.json")
 print("Workflow created:", result)
 
 # Chat with the workflow
