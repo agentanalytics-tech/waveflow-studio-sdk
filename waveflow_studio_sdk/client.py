@@ -105,3 +105,80 @@ class WaveFlowStudio:
             return data
         except Exception as e:
             return {"error": str(e)}
+
+    def enhance_prompt(self, prompt: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Call the /enhance_prompt endpoint to enhance a user-provided prompt.
+
+        Parameters:
+            prompt (str): The text prompt to enhance.
+            session_id (str, optional): Optional session ID. If not provided, server can generate one.
+
+        Returns:
+            Dict[str, Any]: Dictionary containing 'original_prompt' and 'enhanced_prompt'.
+        """
+        url = f"{self.base_url}/enhance_prompt"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        if not session_id:
+            import uuid
+            session_id = str(uuid.uuid4())  # generate new session ID if not provided
+
+        headers["Sessionid"] = session_id
+
+        body = {"prompt": prompt}
+
+        try:
+            response = requests.post(url, headers=headers, json=body)
+            data = response.json()
+
+            if response.status_code != 200:
+                return {"error": data.get("error", "Unknown error occurred")}
+            data["session_id"]=session_id
+            return data
+
+        except Exception as e:
+            return {"error": str(e)}
+
+
+    def create_agent(self, session_id: str) -> dict:
+        """
+        Create agents for a given workflow session.
+
+        Args:
+            session_id (str): The session ID of the workflow.
+
+        Returns:
+            dict: A dictionary containing the created agents and workflow name.
+        """
+        url = f"{self.base_url}/create_agent"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        payload = {"session_id": session_id}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            return response.json()
+        except Exception as e:
+            return {"error": str(e)}
+
+    def get_together_models(self) -> list:
+        """
+        Fetch available models from the Together API.
+
+        Returns:
+            list: List of model IDs.
+        """
+        url = f"{self.base_url}/get-together-models"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {"error": f"Failed to fetch models: {response.status_code}"}
+        except Exception as e:
+            return {"error": str(e)}
