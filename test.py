@@ -5,7 +5,7 @@ import json
 
 # Initialize the client
 client = WaveFlowStudio(
-    api_key="AAAI-WFS-8c8d194b-78e7-4878-b881-8a3b39cd9479",
+    api_key="your-api-key-here",
     base_url="http://127.0.0.1:5000" # optional
 )
 
@@ -30,10 +30,10 @@ client = WaveFlowStudio(
 
 # print("Enhance Prompt Result:", enhance_result)
 
-result = client.create_agent(session_id="123e4567-e89b-12d3-a456-426614174000")
+# result = client.create_agent(session_id="your session id")
 
 # print(json.dumps(result, indent=2))
 
 
-models = client.get_together_models()
-print("Together Models:", models)
+# models = client.get_together_models()
+# print("Together Models:", models)
