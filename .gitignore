@@ -32,14 +32,7 @@
 # __pycache__/
 # *.pyc
 
-# Ignore build directory and everything inside it
 build/
-
-# Ignore egg-info directory
 waveflow_studio_sdk.egg-info/
-
-# Ignore __pycache__ directories anywhere inside waveflow_studio_sdk
 waveflow_studio_sdk/__pycache__/
-
-# Ignore test.py file at root level
 test.py
