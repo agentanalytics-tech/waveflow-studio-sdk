@@ -20,14 +20,26 @@
  
 # waveflow_studio_sdk/__pycache__/client.cpython-312.pyc
 # Build outputs
+# build/
+
+# # Test file
+# test.py
+
+# # Egg-info directory
+# waveflow_studio_sdk.egg-info/
+
+# # Python caches & bytecode
+# __pycache__/
+# *.pyc
+
+# Ignore build directory and everything inside it
 build/
 
-# Test file
-test.py
-
-# Egg-info directory
+# Ignore egg-info directory
 waveflow_studio_sdk.egg-info/
 
-# Python caches & bytecode
-__pycache__/
-*.pyc
+# Ignore __pycache__ directories anywhere inside waveflow_studio_sdk
+waveflow_studio_sdk/__pycache__/
+
+# Ignore test.py file at root level
+test.py
