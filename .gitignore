@@ -1,0 +1,4 @@
+build/
+waveflow_studio_sdk.egg-info/
+__pycache__/
+test.py
