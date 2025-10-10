@@ -182,3 +182,121 @@ class WaveFlowStudio:
                 return {"error": f"Failed to fetch models: {response.status_code}"}
         except Exception as e:
             return {"error": str(e)}
+
+    
+    
+    def model_health_check(self, model_name: str, api_key: str, base_url: str, description: str = None):
+        """
+        Performs a health check for a given model using the API.
+
+        Args:
+            model_name (str): The model identifier (e.g. "mistralai/Mistral-7B-Instruct-v0.2")
+            api_key (str): The API key for the model provider (e.g. Together API key)
+            base_url (str): The base API URL (e.g. "https://api.together.xyz/v1")
+            description (str, optional): A custom system description for the model
+
+        Returns:
+            dict: JSON response from the server, e.g.
+                {"message": "success"} or {"message": "error", "details": "..."}
+        """
+        payload = {
+            "model_name": model_name,
+            "api_key": api_key,
+            "base_url": base_url,
+            "description": description
+        }
+
+        url = f"{self.base_url}/model_health_check"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"message": "error", "details": str(e)}
+
+
+
+    def get_models(self):
+        """
+        Fetches the user's saved models from the backend database.
+
+        Returns:
+            dict: A dictionary containing the list of models, e.g.
+                {"models": ["gpt-4", "mistral-7b", "custom-agent-v1"]}
+        """
+        url = f"{self.base_url}/get_models"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": "Failed to fetch models", "details": str(e)}
+
+    # -----------------------------
+    # Assign Roles
+    # -----------------------------
+    def assign_roles(self, prompt: str):
+        """
+        Creates agents and assigns roles based on the given prompt.
+
+        Args:
+            prompt (str): The user prompt describing what agents/tools to create.
+
+        Returns:
+            dict: Details about created agents, tools, and session info.
+        """
+        url = f"{self.base_url}/assign_roles"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {"prompt": prompt}
+        list_ = self.get_models()
+
+        if len(list_["models"])==0:
+            return {"error": "No model is added, Please do add one model", "details": "use WaveFlowStudio.set_model() to create one"}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": "Failed to assign roles", "details": str(e)}
+
+
+
+    def get_tools(self):
+        """
+        Fetch all tools for the authenticated user.
+        Matches the current /get_tools FastAPI endpoint behavior.
+        """
+        try:
+            url = f"{self.base_url}/get_tools"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            # Return raw JSON as provided by your backend
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {
+                "error": "HTTP error occurred",
+                "details": str(http_err),
+                "status_code": response.status_code if 'response' in locals() else None
+            }
+        except Exception as e:
+            return {"error": "Failed to fetch tools", "details": str(e)}
