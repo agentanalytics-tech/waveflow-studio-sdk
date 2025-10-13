@@ -37,6 +37,42 @@ class WaveFlowStudio:
                 raise Exception(f"Unexpected error: {response.status_code} - {response.text}")
         except requests.RequestException as e:
             raise Exception(f"[ERROR] API validation failed: {e}")
+        
+    def set_model(self, client: str, model_api_key: str, model_name: str, base_url: str, date: str, description: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Saves model details to the server.
+
+        Args:
+            client (str): The client name (e.g., "groq", "openai").
+            model_api_key (str): The API key for the model's service.
+            model_name (str): The specific name of the model.
+            base_url (str): The base URL for the model's API endpoint.
+            date (str): The date of setting the model, as a string.
+            description (Optional[str], optional): An optional description for the model. Defaults to None.
+
+        Returns:
+            Dict[str, Any]: The JSON response from the server, indicating success or failure.
+        """
+        url = f"{self.base_url}/set_model"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        payload = {
+            "client": client,
+            "api_key": model_api_key,
+            "model_name": model_name,
+            "base_url": base_url,
+            "date": date,
+            "description": description or ""
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            return {"error": f"HTTP error occurred: {http_err}", "details": response.text}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
 
 
     def create_workflow(self, json_file_path: str) -> Dict[str, Any]:
