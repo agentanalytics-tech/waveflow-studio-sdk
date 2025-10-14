@@ -36,3 +36,6 @@ build/
 waveflow_studio_sdk.egg-info/
 waveflow_studio_sdk/__pycache__/
 test.py
+dist
+.vs
+workflow.json
