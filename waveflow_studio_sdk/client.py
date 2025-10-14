@@ -66,6 +66,34 @@ class WaveFlowStudio:
             # print(str(e))
             return {"error": str(e)}
 
+    def read_workflows(self, user_id: str) -> Dict[str, Any]:
+        """
+        Fetch all workflows for a given user ID.
+
+        Parameters:
+            user_id (str): The user ID (typically the user's email).
+
+        Returns:
+            Dict[str, Any]: The list of workflows or an error message.
+        """
+        url = f"{self.base_url}/read-workflows"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        params = {"user_id": user_id}
+
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            data = response.json()
+
+            if response.status_code == 200:
+                return data
+            else:
+                return {
+                    "error": f"Failed with status {response.status_code}",
+                    "response": data
+                }
+
+        except Exception as e:
+            return {"error": str(e)}
 
     def chat(self, query: str, context: Optional[str] = None) -> Dict[str, Any]:
         """
