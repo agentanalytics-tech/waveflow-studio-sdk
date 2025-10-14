@@ -1,6 +1,7 @@
 import requests
 import json
 from typing import Optional, Dict, Any
+import uuid
 
 class InvalidAPIKeyError(Exception):
     """Raised when the API key is invalid."""
@@ -124,7 +125,6 @@ class WaveFlowStudio:
         }
 
         if not session_id:
-            import uuid
             session_id = str(uuid.uuid4())  # generate new session ID if not provided
 
         headers["Sessionid"] = session_id
@@ -182,3 +182,35 @@ class WaveFlowStudio:
                 return {"error": f"Failed to fetch models: {response.status_code}"}
         except Exception as e:
             return {"error": str(e)}
+
+
+    def surprise_me(self, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Fetch a surprise prompt from the backend.
+
+        If session_id is not provided, a new one is auto-generated.
+        """
+        url = f"{self.base_url}/surprise_me"
+
+        if not session_id:
+            session_id = str(uuid.uuid4())
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Sessionid": session_id
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            data = response.json()
+            data["session_id"] = session_id
+
+            if response.status_code != 200:
+                return {
+                    "error": data.get("error", f"Failed with status {response.status_code}"),
+                    "session_id": session_id
+                }
+
+            return data
+        except Exception as e:
+            return {"error": str(e), "session_id": session_id}
