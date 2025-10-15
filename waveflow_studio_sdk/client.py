@@ -230,15 +230,227 @@ class WaveFlowStudio:
 
         try:
             response = requests.get(url, headers=headers)
-            data = response.json()
-            data["session_id"] = session_id
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": "Failed to fetch models", "details": str(e)}
 
-            if response.status_code != 200:
-                return {
-                    "error": data.get("error", f"Failed with status {response.status_code}"),
-                    "session_id": session_id
-                }
+  
+    def assign_roles(self, prompt: str):
+        """
+        Creates agents and assigns roles based on the given prompt.
 
-            return data
+        Args:
+            prompt (str): The user prompt describing what agents/tools to create.
+
+        Returns:
+            dict: Details about created agents, tools, and session info.
+        """
+        url = f"{self.base_url}/assign_roles"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {"prompt": prompt}
+        list_ = self.get_models()
+
+        if len(list_["models"])==0:
+            return {"error": "No model is added, Please do add one model", "details": "use WaveFlowStudio.set_model() to create one"}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": "Failed to assign roles", "details": str(e)}
+
+
+
+    def get_tools(self):
+        """
+        Fetch all tools for the authenticated user.
+        Matches the current /get_tools FastAPI endpoint behavior.
+        """
+        try:
+            url = f"{self.base_url}/get_tools"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            # Return raw JSON as provided by your backend
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {
+                "error": "HTTP error occurred",
+                "details": str(http_err),
+                "status_code": response.status_code if 'response' in locals() else None
+            }
         except Exception as e:
-            return {"error": str(e), "session_id": session_id}
+            return {"error": "Failed to fetch tools", "details": str(e)}
+
+    def get_groq_models(self):
+
+        """
+        Fetches the list of available Groq models from the backend.
+
+        Returns:
+            dict: A list of Groq model IDs or an error message.
+        """
+        url = f"{self.base_url}/get-groq-models"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {
+                "error": "Failed to fetch Groq models",
+                "details": str(e)
+            }
+
+    def get_gemini_models(self):
+        """
+        Fetches the list of available Gemini models from the backend.
+
+        Returns:
+            dict: A list of Gemini model names or an error message.
+        """
+        url = f"{self.base_url}/get-gemini-models"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {
+                "error": "Failed to fetch Gemini models",
+                "details": str(e)
+            }
+
+    def get_openai_models(self):
+        """
+        Fetches the list of available OpenAI models from the backend.
+
+        Returns:
+            dict: A list of OpenAI model names or an error message.
+        """
+        url = f"{self.base_url}/get-openai-models"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {
+                "error": "Failed to fetch OpenAI models",
+                "details": str(e)
+            }
+    def get_models_by_provider(self, provider: str):
+        """
+        Fetches model lists dynamically based on the selected provider.
+
+        Args:
+            provider (str): The model provider name. Must be one of:
+                            'groq', 'gemini', or 'openai'.
+
+        Returns:
+            dict | list: A list of model names or an error message.
+        """
+        provider = provider.lower()
+        endpoint_map = {
+            "groq": "get-groq-models",
+            "gemini": "get-gemini-models",
+            "openai": "get-openai-models"
+        }
+
+        if provider not in endpoint_map:
+            return {
+                "error": "Invalid provider",
+                "details": "Valid providers are: 'groq', 'gemini', 'openai'"
+            }
+
+        url = f"{self.base_url}/{endpoint_map[provider]}"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return {
+                "provider": provider,
+                "models": response.json()
+            }
+        except requests.exceptions.RequestException as e:
+            return {
+                "error": f"Failed to fetch {provider} models",
+                "details": str(e)
+            }
+
+
+    def get_enums_by_app(self, enum_name: str):
+        """
+        Fetches available enums (functions) for a given app/toolkit.
+
+        Args:
+            enum_name (str): The name of the app/toolkit (e.g., 'slack', 'notion', 'github').
+
+        Returns:
+            dict: Enum list or error details.
+        """
+        url = f"{self.base_url}/get-enums-by-app"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {"enum": enum_name}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {
+                "error": "Failed to fetch enums by app",
+                "details": str(e)
+            }
+        
+    def get_user_summary(self):
+        """
+        Fetches the user's summary (workflows, models, tools) from the backend.
+
+        Returns:
+            dict: Summary data or error details.
+        """
+        url = f"{self.base_url}/get-user-summary"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {
+                "error": "Failed to fetch user summary",
+                "details": str(e)
+            }
