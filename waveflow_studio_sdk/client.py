@@ -454,3 +454,25 @@ class WaveFlowStudio:
                 "error": "Failed to fetch user summary",
                 "details": str(e)
             }
+
+    def get_session_data(self) -> Dict[str, Any]:
+        """
+        Fetch all session summaries for the authenticated user.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing all session summaries or an error message.
+        """
+        url = f"{self.base_url}/session_data"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "error": f"Failed with status {response.status_code}",
+                    "response": response.text
+                }
+        except Exception as e:
+            return {"error": str(e)}
