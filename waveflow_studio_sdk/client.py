@@ -454,3 +454,174 @@ class WaveFlowStudio:
                 "error": "Failed to fetch user summary",
                 "details": str(e)
             }
+    def save_workflow(
+        self,
+        flowname: str,
+        workflow_type: str,
+        flow_desc: str,
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Save the current workflow to the user's account.
+
+        Args:
+            flowname (str): Name of the workflow to save.
+            workflow_type (str): Type/category of the workflow (e.g., 'AI Agent').
+            flow_desc (str): Short description of the workflow.
+            session_id (Optional[str]): The session/workflow ID to save. 
+                                        If not provided, uses the internally stored workflow_id.
+
+        Returns:
+            Dict[str, Any]: Server response with message or error details.
+        """
+        url = f"{self.base_url}/save"
+
+        # ✅ Use stored workflow_id if not explicitly passed
+        sid = session_id or self.workflow_id
+        if not sid:
+            return {"error": "No session_id found. Please create or run a workflow first."}
+
+        # Headers
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Sessionid": sid
+        }
+
+        # Payload
+        payload = {
+            "flowname": flowname,
+            "workflow_type": workflow_type,
+            "flowDesc": flow_desc
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            data = response.json()
+
+            # Optional: Update stored workflow_id if backend returns new session
+            if "session_id" in data:
+                self.workflow_id = data["session_id"]
+
+            return data
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+
+
+    def run_workflow(
+        self,
+        agents: list,
+        file_name: str = "agents",
+        aichat_option: str = "Conversationalai",
+        session_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Run the workflow to generate a sequence of agents.
+
+        Args:
+            agents (list): List of agent IDs or agent configurations.
+            file_name (str): File or collection name (default: "agents").
+            aichat_option (str): Type of AI chat mode (default: "Conversationalai").
+            session_id (Optional[str]): The current session ID.
+
+        Returns:
+            Dict[str, Any]: API response containing message and sequence data.
+        """
+        url = f"{self.base_url}/run"
+        sid = session_id or self.workflow_id
+        if not sid:
+            return {"error": "No session_id found. Create a workflow first."}
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Sessionid": sid
+        }
+
+        payload = {
+            "agents": agents,
+            # "file_name": file_name,
+            "aichatOption": aichat_option
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            data = response.json()
+
+            # Optionally update workflow_id if backend returns new one
+            if "session_id" in data:
+                self.workflow_id = data["session_id"]
+
+            return data
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+        
+    def delete_workflow(self, session_id: str) -> Dict[str, Any]:
+        """
+        Delete a workflow and its associated history by session ID.
+
+        Args:
+            session_id (str): The unique session ID of the workflow to delete.
+
+        Returns:
+            Dict[str, Any]: Response from the backend confirming deletion or error.
+        """
+        if not session_id:
+            return {"error": "Session ID is required to delete a workflow."}
+
+        url = f"{self.base_url}/delete-workflow/{session_id}"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.delete(url, headers=headers)
+            data = response.json()
+            if response.status_code == 200:
+                # Optionally clear workflow_id if deleted
+                if self.workflow_id == session_id:
+                    self.workflow_id = None
+                return {"message": data.get("message", "Workflow deleted successfully")}
+            else:
+                return {"error": data.get("error", "Unknown error occurred")}
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+
+
+    def set_model(self, client: str, model_api_key: str, model_name: str, base_url: str, date: str, description: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Saves model details to the server.
+
+        Args:
+            client (str): The client name (e.g., "groq", "openai").
+            model_api_key (str): The API key for the model's service.
+            model_name (str): The specific name of the model.
+            base_url (str): The base URL for the model's API endpoint.
+            date (str): The date of setting the model, as a string.
+            description (Optional[str], optional): An optional description for the model. Defaults to None.
+
+        Returns:
+            Dict[str, Any]: The JSON response from the server, indicating success or failure.
+        """
+        url = f"{self.base_url}/set_model"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        payload = {
+            "client": client,
+            "api_key": model_api_key,
+            "model_name": model_name,
+            "base_url": base_url,
+            "date": date,
+            "description": description or ""
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            return {"error": f"HTTP error occurred: {http_err}", "details": response.text}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
