@@ -2,6 +2,7 @@ import requests
 import json
 from typing import Optional, Dict, Any
 import uuid
+import os
 
 class InvalidAPIKeyError(Exception):
     """Raised when the API key is invalid."""
@@ -625,3 +626,166 @@ class WaveFlowStudio:
             return {"error": f"HTTP error occurred: {http_err}", "details": response.text}
         except Exception as e:
             return {"error": f"An unexpected error occurred: {str(e)}"}
+    
+    
+    def reset_workflow(self, session_id: str):
+        """
+        Resets the workflow state on the server for a specific session.
+
+        Args:
+            session_id (str): The identifier for the user session whose
+                              workflow should be reset.
+
+        Returns:
+            dict: The JSON response from the server.
+        """
+        # The endpoint URL
+        url = f"{self.base_url}/reset"
+
+        # Headers including standard auth and the custom Sessionid
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Sessionid": session_id
+        }
+
+        try:
+            # Make the GET request
+            response = requests.get(url, headers=headers)
+            
+            # Check for HTTP errors (e.g., 4xx or 5xx responses)
+            response.raise_for_status()
+
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            # Handle specific HTTP errors
+            return {
+                "error": "HTTP error occurred",
+                "status_code": response.status_code,
+                "details": str(http_err),
+                "response_text": response.text
+            }
+        except requests.exceptions.RequestException as req_err:
+            # Handle other network-related errors
+            return {"error": "Request failed", "details": str(req_err)}
+    
+    
+    
+    def get_agents(self) -> Dict[str, Any]:
+        """
+        Retrieves the list of agents and workflow name from the server.
+
+        Returns:
+            Dict[str, Any]: A JSON object containing 'agents' and 'workflow_name',
+                            or an error message if the request fails.
+        """
+        url = f"{self.base_url}/get-agents"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {"error": f"HTTP error occurred: {http_err}", "details": response.text}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
+
+
+
+    def add_tool(self, token: str, name: str, description: str, file_path: str, secrets: list = None):
+        """
+        Uploads a Python tool file along with metadata and optional secrets.
+
+        Args:
+            token (str): Authorization token.
+            name (str): Tool name.
+            description (str): Tool description.
+            file_path (str): Path to the Python file (.py) to upload.
+            secrets (list): Optional list of dictionaries. Example:
+                            [{"key": "OPENAI_API_KEY", "value": "sk-xxxxx"}]
+        Returns:
+            dict: JSON response from the API.
+        """
+
+        url = f"{self.base_url}/add-tools"
+
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+
+        # Form data
+        data = {
+            "name": name,
+            "description": description
+        }
+
+        # Add secrets if present
+        if secrets:
+            for i, secret in enumerate(secrets):
+                data[f"secrets[{i}][key]"] = secret["key"]
+                data[f"secrets[{i}][value]"] = secret["value"]
+
+        # Ensure file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found at path: {file_path}")
+
+        files = {
+            "file": open(file_path, "rb")
+        }
+
+        try:
+            response = requests.post(url, headers=headers, data=data, files=files)
+            files["file"].close()
+        except Exception as e:
+            files["file"].close()
+            return {"error": f"Request failed: {str(e)}"}
+
+        try:
+            return response.json()
+        except Exception:
+            return {"error": "Invalid response format", "raw_text": response.text}
+    
+    
+    def delete_tool(self, tool_id: str):
+            """
+            Deletes a tool from the database using its unique ID.
+
+            Args:
+                tool_id (str): The unique identifier of the tool to be deleted.
+
+            Returns:
+                dict: The JSON response from the server.
+            """
+            # Construct the full URL for the DELETE request
+            url = f"{self.base_url}/delete-tool/{tool_id}"
+
+            # Set up the authorization header
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+
+            try:
+                # Make the DELETE request
+                response = requests.delete(url, headers=headers)
+                
+                # Raise an exception for bad status codes (like 404, 500, etc.)
+                response.raise_for_status()
+
+                # Return the JSON body of the response
+                return response.json()
+
+            except requests.exceptions.HTTPError as http_err:
+                # Handle specific HTTP errors
+                return {
+                    "error": "HTTP error occurred",
+                    "status_code": response.status_code,
+                    "details": str(http_err),
+                    "response_text": response.text
+                }
+            except requests.exceptions.RequestException as req_err:
+                # Handle other request-related errors (e.g., connection error)
+                return {"error": "Request failed", "details": str(req_err)}
