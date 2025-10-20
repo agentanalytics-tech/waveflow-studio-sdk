@@ -3,6 +3,7 @@ import json
 from typing import Optional, Dict, Any
 import uuid
 import os
+from typing import List
 
 class InvalidAPIKeyError(Exception):
     """Raised when the API key is invalid."""
@@ -788,4 +789,202 @@ class WaveFlowStudio:
                 }
             except requests.exceptions.RequestException as req_err:
                 # Handle other request-related errors (e.g., connection error)
+                return {"error": "Request failed", "details": str(req_err)}
+    
+    
+    def extract_text(self, file_path: str):
+            """
+            Uploads a file (PDF, DOCX, or TXT) to extract its text content.
+
+            Args:
+                file_path (str): The local path to the file you want to upload.
+
+            Returns:
+                dict: The JSON response from the server, containing the extracted text
+                    or an error message.
+            """
+            # 1. Check if the file exists locally before trying to send it
+            if not os.path.exists(file_path):
+                return {"error": "File not found", "path": file_path}
+
+            # 2. Construct the full URL for the endpoint
+            url = f"{self.base_url}/extract-text"
+
+            # 3. Open the file in binary read mode and send the request
+            try:
+                with open(file_path, "rb") as f:
+                    # The 'files' dictionary key 'file' must match the FastAPI
+                    # parameter name: async def extract_text(file: UploadFile ...):
+                    files = {"file": (os.path.basename(file_path), f)}
+                    
+                    response = requests.post(url, files=files)
+                    
+                    # Raise an exception for bad responses (4xx or 5xx)
+                    response.raise_for_status()
+                    
+                    return response.json()
+                    
+            except requests.exceptions.HTTPError as http_err:
+                return {
+                    "error": "HTTP error occurred",
+                    "status_code": response.status_code,
+                    "details": str(http_err),
+                    "response_text": response.text
+                }
+            except requests.exceptions.RequestException as req_err:
+                return {"error": "Request failed", "details": str(req_err)}
+
+
+    def workflow_run_chat_pdf(self, session_id: str, query: str, filenames: Optional[List[str]] = None):
+            """
+            Runs the chat PDF workflow by sending a query for a specific session.
+
+            Args:
+                session_id (str): The active session ID for the workflow.
+                query (str): The user's question or prompt.
+                filenames (Optional[List[str]]): An optional list of filenames that are
+                                                part of the context for this query.
+
+            Returns:
+                dict: The JSON response from the server, containing the final answer.
+            """
+            url = f"{self.base_url}/workflow-run-chat-pdf"
+            
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            # Prepare the form data payload
+            data = {
+                "session_id": session_id,
+                "query": query
+            }
+
+            # The backend expects 'filenames' as a single string.
+            # This SDK method conveniently accepts a Python list and joins it.
+            if filenames:
+                data["filenames"] = ",".join(filenames)
+                
+            try:
+                # Send data as form fields
+                response = requests.post(url, headers=headers, data=data)
+                response.raise_for_status()
+                return response.json()
+                
+            except requests.exceptions.HTTPError as http_err:
+                return {
+                    "error": "HTTP error occurred",
+                    "status_code": response.status_code,
+                    "details": str(http_err),
+                    "response_text": response.text
+                }
+            except requests.exceptions.RequestException as req_err:
+                return {"error": "Request failed", "details": str(req_err)}
+            
+    def get_apps(self):
+            """
+            Retrieves the list of available Composio apps (toolkits) from the server.
+
+            Returns:
+                dict: The JSON response from the server, which should be a list
+                    of app dictionaries on success.
+            """
+            url = f"{self.base_url}/apps"
+            
+            try:
+                # Make a simple GET request, no headers or data needed
+                response = requests.get(url)
+                
+                # Raise an exception for bad status codes (like 404, 500)
+                response.raise_for_status()
+                
+                # Return the parsed JSON response
+                return response.json()
+                
+            except requests.exceptions.HTTPError as http_err:
+                return {
+                    "error": "HTTP error occurred",
+                    "status_code": response.status_code,
+                    "details": str(http_err),
+                    "response_text": response.text
+                }
+            except requests.exceptions.RequestException as req_err:
+                # Handle other network-related errors
+                return {"error": "Request failed", "details": str(req_err)}
+            
+
+    def get_connections(self):
+            """
+            Retrieves the list of active connections for the authenticated user.
+
+            Returns:
+                dict: The JSON response from the server, containing a list of connections.
+            """
+            url = f"{self.base_url}/connections"
+            
+            # This endpoint requires authentication to identify the user.
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            try:
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()  # Raise an exception for bad status codes
+                return response.json()
+                
+            except requests.exceptions.HTTPError as http_err:
+                return {
+                    "error": "HTTP error occurred",
+                    "status_code": response.status_code,
+                    "details": str(http_err),
+                    "response_text": response.text
+                }
+            except requests.exceptions.RequestException as req_err:
+                return {"error": "Request failed", "details": str(req_err)}
+    
+    
+    
+    def initiate_connection(self, toolkit: str, credentials: Optional[Dict[str, str]] = None):
+            """
+            Initiates a connection for a given toolkit (app).
+
+            - If credentials are NOT provided, this may return a list of required fields.
+            - If credentials ARE provided, it attempts to create the connection.
+            - For OAuth apps, it may return a redirect URL.
+
+            Args:
+                toolkit (str): The slug of the toolkit to connect (e.g., 'github').
+                credentials (Optional[Dict[str, str]]): A dictionary of credentials
+                    (like API keys) if required by the toolkit for custom auth.
+
+            Returns:
+                dict: The JSON response from the server.
+            """
+            url = f"{self.base_url}/initiate-connection"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"  # Important for sending JSON data
+            }
+            
+            # Prepare the JSON payload
+            payload = {
+                "toolkit": toolkit
+            }
+            if credentials:
+                payload["credentials"] = credentials
+                
+            try:
+                # The `json` parameter automatically serializes the payload
+                response = requests.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                return response.json()
+                
+            except requests.exceptions.HTTPError as http_err:
+                return {
+                    "error": "HTTP error occurred",
+                    "status_code": response.status_code,
+                    "details": str(http_err),
+                    "response_text": response.text
+                }
+            except requests.exceptions.RequestException as req_err:
                 return {"error": "Request failed", "details": str(req_err)}
