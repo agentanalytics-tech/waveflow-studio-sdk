@@ -456,6 +456,54 @@ class WaveFlowStudio:
                 "error": "Failed to fetch user summary",
                 "details": str(e)
             }
+
+    def get_session_data(self) -> Dict[str, Any]:
+        """
+        Fetch all session summaries for the authenticated user.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing all session summaries or an error message.
+        """
+        url = f"{self.base_url}/session_data"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "error": f"Failed with status {response.status_code}",
+                    "response": response.text
+                }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def get_session_history(self, session_id: str) -> Dict[str, Any]:
+        """
+        Retrieve chat history for a specific session.
+
+        Args:
+            session_id (str): The session ID whose chat history should be fetched.
+
+        Returns:
+            Dict[str, Any]: Chat history or an error message.
+        """
+        url = f"{self.base_url}/get-session-history"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        payload = {"session_id": session_id}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "error": f"Failed with status {response.status_code}",
+                    "response": response.text
+                }
+        except Exception as e:
+            return {"error": str(e)}
     def save_workflow(
         self,
         flowname: str,
