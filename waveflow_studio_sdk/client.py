@@ -1036,3 +1036,44 @@ class WaveFlowStudio:
                 }
             except requests.exceptions.RequestException as req_err:
                 return {"error": "Request failed", "details": str(req_err)}
+    def add_executor(self, session_id: str, executors: int) -> dict:
+        """
+        Calls the /add_executor endpoint to add executors to a session.
+
+        Args:
+            session_id: The ID of the session.
+            executors: The number of executors to add.
+
+        Returns:
+            A dictionary containing the JSON response from the server.
+        """
+        url = f"{self.base_url}/add_executor"
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "session_id": session_id,
+            "executors": executors
+        }
+        
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  # Raise exception for bad status codes
+            return response.json()
+            
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            try:
+                # Try to return the server's error message
+                return response.json()
+            except json.JSONDecodeError:
+                return {"success": False, "message": str(http_err)}
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            return {"success": False, "message": str(req_err)}
+        except json.JSONDecodeError:
+            print("Failed to decode JSON response")
+            return {"success": False, "message": "Invalid JSON response from server."}
