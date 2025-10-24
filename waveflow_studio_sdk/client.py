@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 import uuid
 import os
 from typing import List
@@ -1077,3 +1077,317 @@ class WaveFlowStudio:
         except json.JSONDecodeError:
             print("Failed to decode JSON response")
             return {"success": False, "message": "Invalid JSON response from server."}
+    
+    
+    def get_workflow_for_editing(self, session_id: str) -> Dict[str, Any]:
+            """
+            Fetch a workflow for editing based on session ID.
+
+            Args:
+                session_id (str): The session ID of the workflow to fetch
+
+            Returns:
+                Dict[str, Any]: The workflow data containing 'agents' and 'workflow_name'
+            """
+            url = f"{self.base_url}/edit_workflow"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            params = {"session_id": session_id}
+
+            try:
+                # Send session_id as query param on POST to match FastAPI signature
+                response = requests.post(url, headers=headers, params=params)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.HTTPError as http_err:
+                try:
+                    return {
+                        "error": "HTTP error occurred",
+                        "status_code": response.status_code,
+                        "response": response.json()
+                    }
+                except Exception:
+                    return {
+                        "error": "HTTP error occurred",
+                        "status_code": response.status_code,
+                        "details": str(http_err),
+                        "response_text": response.text
+                    }
+            except requests.exceptions.RequestException as e:
+                return {
+                    "error": "Request failed",
+                    "details": str(e)
+                }
+    def update_agent(
+        self, 
+        agent_id: str, 
+        name: str, 
+        role: str, 
+        description: str,
+        model: Dict[str, Any] = None,
+        tools: List[Dict[str, Any]] = None,
+        advanced_parameters: Dict[str, Any] = None,
+        web_search: bool = False
+    ) -> dict:
+        """
+        Calls the /update-agent endpoint for a node of type 'agent'.
+        """
+        url = f"{self.base_url}/update-agent"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Construct the payload as expected by the API
+        payload = {
+            "type": "agent",
+            "id": agent_id,
+            "name": name,
+            "role": role,
+            "description": description,
+            "model": model,
+            "tool": tools if tools is not None else [], # API logic uses 'tool'
+            "advanced_parameters": advanced_parameters if advanced_parameters is not None else {},
+            "webSearch": web_search
+        }
+        
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                return {"success": False, "error": str(http_err)}
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            return {"success": False, "error": str(req_err)}
+        except json.JSONDecodeError:
+            print("Failed to decode JSON response")
+            return {"success": False, "error": "Invalid JSON response from server."}
+
+    def update_decision_node(
+        self,
+        node_id: str,
+        name: str,
+        description: str,
+        key: str,
+        secret_key: str
+    ) -> dict:
+        """
+        Calls the /update-agent endpoint for a node of type 'decision node'.
+        """
+        url = f"{self.base_url}/update-agent"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "type": "decision node",
+            "id": node_id,
+            "name": name,
+            "description": description,
+            "key": key,
+            "secretKey": secret_key # API logic uses 'secretKey'
+        }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                return {"success": False, "error": str(http_err)}
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            return {"success": False, "error": str(req_err)}
+
+    def update_executor_node(
+        self,
+        node_id: str,
+        name: str,
+        function_names: List[str],
+        parameters: Dict[str, Any] = None
+    ) -> dict:
+        """
+        Calls the /update-agent endpoint for a node of type 'executor node'.
+        Note: The API expects parameters as a JSON string in the 'description' field.
+        """
+        url = f"{self.base_url}/update-agent"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # API expects parameters to be a JSON string in the 'description' field.
+        param_string = json.dumps(parameters) if parameters else None
+
+        payload = {
+            "type": "executor node",
+            "id": node_id,
+            "name": name,
+            "tool": function_names, # API logic uses 'tool'
+            "description": param_string # API logic uses 'description'
+        }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                return {"success": False, "error": str(http_err)}
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            return {"success": False, "error": str(req_err)}
+
+    def update_tool(
+        self,
+        tool_id: str,
+        name: str,
+        description: str = None,
+        tool_key: str = None,
+        enabled: bool = True
+    ) -> dict:
+        """
+        Calls the /update-agent endpoint for a node of type 'tool'.
+        """
+        url = f"{self.base_url}/update-agent"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "type": "tool",
+            "id": tool_id,
+            "name": name,
+            "description": description,
+            "tool_key": tool_key,
+            "enabled": enabled
+        }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                return {"success": False, "error": str(http_err)}
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            return {"success": False, "error": str(req_err)}
+    
+    
+    def get_prompt_framework(self, session_id: str) -> Union[str, dict]:
+            """
+            Calls the GET /prompt_framework endpoint to generate a prompt template.
+            
+            Args:
+                session_id: The ID of the session. This is sent as a 'Sessionid' header.
+
+            Returns:
+                - On success: A string containing the raw prompt template.
+                - On failure: A dictionary containing error details.
+            """
+            url = f"{self.base_url}/prompt_framework"
+            
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Sessionid": session_id  # Note the header name 'Sessionid'
+            }
+            
+            try:
+                response = requests.get(url, headers=headers)
+                
+                # Raise an exception for bad status codes (4xx, 5xx)
+                response.raise_for_status()
+                
+                # On success (200), the API returns the raw text.
+                # We return response.text, not response.json()
+                return response.text 
+                
+            except requests.exceptions.HTTPError as http_err:
+                print(f"HTTP error occurred: {http_err}")
+                try:
+                    # Errors (400, 500, etc.) ARE returned as JSON
+                    return response.json() 
+                except json.JSONDecodeError:
+                    # Fallback if the error response isn't JSON
+                    return {"success": False, "error": str(http_err), "details": response.text}
+            except requests.exceptions.RequestException as req_err:
+                print(f"An error occurred: {req_err}")
+                return {"success": False, "error": str(req_err)}
+
+    def update_model(
+            self,
+            model_id: str,
+            client: str,
+            api_key: str,
+            model_name: str,
+            base_url: str,
+            description: str = ""
+        ) -> Dict:
+            """
+            Calls the POST /update_model endpoint to update an existing model.
+            All request logic is self-contained in this method.
+            """
+            
+            # 1. Construct the full URL
+            url = f"{self.base_url}/update_model"
+            
+            # 2. Construct the headers
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            
+            # 3. Construct the payload
+            payload = {
+                "id": model_id, # Crucial: pass the ID
+                "client": client.lower(),
+                "api_key": api_key,
+                "model_name": model_name,
+                "base_url": base_url,
+                "description": description
+            }
+            
+            # 4. Make the request and handle errors
+            try:
+                response = requests.post(url, json=payload, headers=headers)
+                
+                # Raise an exception for bad status codes (4xx, 5xx)
+                response.raise_for_status()
+
+                # Success: return the JSON response
+                return response.json()
+
+            except requests.exceptions.HTTPError as http_err:
+                # Handle 4xx/5xx errors
+                print(f"HTTP error occurred: {http_err} - {response.text}")
+                try:
+                    # Try to return the API's JSON error message
+                    return response.json() 
+                except json.JSONDecodeError:
+                    # If the error response itself isn't JSON
+                    return {"success": False, "error": str(http_err), "details": response.text}
+            
+            except requests.exceptions.RequestException as req_err:
+                # Handle connection errors, timeouts, etc.
+                print(f"An error occurred: {req_err}")
+                return {"success": False, "error": str(req_err)}
+            
+            except json.JSONDecodeError:
+                # If the *success* response wasn't valid JSON
+                print("Failed to decode successful JSON response")
+                return {"success": False, "error": "Invalid JSON response from server."}
+    
