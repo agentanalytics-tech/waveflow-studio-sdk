@@ -1077,3 +1077,61 @@ class WaveFlowStudio:
         except json.JSONDecodeError:
             print("Failed to decode JSON response")
             return {"success": False, "message": "Invalid JSON response from server."}
+
+    def update_user_workflows(self, workflows_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update the authenticated user's workflows.
+
+        Args:
+            workflows_data (dict): The workflow data to update, e.g. {"workflows": [...]}
+
+        Returns:
+            dict: Contains count of updated workflows or an error message.
+        """
+        url = f"{self.base_url}/update-user-workflows"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.post(url, headers=headers, json=workflows_data)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "error": f"Failed with status {response.status_code}",
+                    "response": response.text
+                }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def upload_file(self, user_id: str, file_path: str) -> dict:
+        """
+        Upload a file for a given user to the backend.
+
+        Args:
+            user_id (str): The user ID or email.
+            file_path (str): Path to the file on local system.
+
+        Returns:
+            dict: Response from the server.
+        """
+        url = f"{self.base_url}/file_upload"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        if not os.path.exists(file_path):
+            return {"error": f"File not found: {file_path}"}
+
+        try:
+            with open(file_path, "rb") as file:
+                files = {"file": (os.path.basename(file_path), file)}
+                data = {"user_id": user_id}
+                response = requests.post(url, headers=headers, files=files, data=data)
+
+            try:
+                return response.json()
+            except Exception:
+                return {"error": "Invalid JSON response", "raw": response.text}
+
+        except Exception as e:
+            return {"error": str(e)}
