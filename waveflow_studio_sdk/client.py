@@ -19,27 +19,50 @@ class WaveFlowStudio:
         self._validate_api_key()
         self.workflow_id = None
 
-    def _validate_api_key(self) -> str:
+    # def _validate_api_key(self) -> str:
+    #     """
+    #     Validate API key with server and return user_id if valid.
+    #     """
+    #     url = f"{self.base_url}/user"
+    #     headers = {"Authorization": f"Bearer {self.api_key}"}
+
+    #     try:
+    #         response = requests.get(url, headers=headers)
+    #         res = response.json()
+    #         if res.get("status_code") == 200:
+    #             user_id = res.get("content").get("valid")
+    #             if not user_id:
+    #                 raise InvalidAPIKeyError("API key not associated with any user.")
+    #             return 
+    #         elif response.status_code == 401:
+    #             raise InvalidAPIKeyError("Invalid API key provided.")
+    #         else:
+    #             raise Exception(f"Unexpected error: {response.status_code} - {response.text}")
+    #     except requests.RequestException as e:
+    #         raise Exception(f"[ERROR] API validation failed: {e}")
+
+    def _validate_api_key(self):
         """
-        Validate API key with server and return user_id if valid.
+        Validate API key:
+        - If AAAI key → trust backend during usage (skip /user validation)
+        - If normal JWT → validate by calling /user
         """
+        if self.api_key.startswith("AAAI"):
+            # ✅ Skip /user check for AAAI keys (backend validates later automatically)
+            return
+
+        # ✅ Normal Supabase JWT validation
         url = f"{self.base_url}/user"
         headers = {"Authorization": f"Bearer {self.api_key}"}
-
         try:
             response = requests.get(url, headers=headers)
             res = response.json()
-            if res.get("status_code") == 200:
-                user_id = res.get("content").get("valid")
-                if not user_id:
-                    raise InvalidAPIKeyError("API key not associated with any user.")
-                return 
-            elif response.status_code == 401:
-                raise InvalidAPIKeyError("Invalid API key provided.")
-            else:
-                raise Exception(f"Unexpected error: {response.status_code} - {response.text}")
-        except requests.RequestException as e:
-            raise Exception(f"[ERROR] API validation failed: {e}")
+            if res.get("status_code") == 200 and res.get("content", {}).get("valid"):
+                return
+            raise InvalidAPIKeyError("Invalid API key provided.")
+        except requests.RequestException:
+            raise InvalidAPIKeyError("Invalid API key provided.")
+
 
 
     def create_workflow(self, json_file_path: str) -> Dict[str, Any]:
@@ -433,6 +456,7 @@ class WaveFlowStudio:
                 "error": "Failed to fetch enums by app",
                 "details": str(e)
             }
+        
         
     def get_user_summary(self):
         """
@@ -1036,6 +1060,7 @@ class WaveFlowStudio:
                 }
             except requests.exceptions.RequestException as req_err:
                 return {"error": "Request failed", "details": str(req_err)}
+            
     def add_executor(self, session_id: str, executors: int) -> dict:
         """
         Calls the /add_executor endpoint to add executors to a session.
@@ -1077,3 +1102,366 @@ class WaveFlowStudio:
         except json.JSONDecodeError:
             print("Failed to decode JSON response")
             return {"success": False, "message": "Invalid JSON response from server."}
+        
+    def filter_apps(self) -> Dict[str, Any]:
+        """
+        Fetch and return available app/tool categories from the backend.
+
+        Returns:
+            Dict[str, Any]: A list of app categories or error details.
+        """
+        url = f"{self.base_url}/filter_apps"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return {"apps": response.json()}
+            else:
+                return {"error": response.json().get("error", "Unknown error occurred")}
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+        
+    def get_tool_info(self, app_name: str) -> Dict[str, Any]:
+        """
+        Fetch tools and details associated with a given app/toolkit name.
+
+        Args:
+            app_name (str): Name of the app/toolkit (e.g., 'firecrawl', 'gmail', 'notion').
+
+        Returns:
+            Dict[str, Any]: List of tools or an error message.
+        """
+        if not app_name:
+            return {"error": "app_name is required."}
+
+        url = f"{self.base_url}/app_info"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        params = {"app_name": app_name}
+
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            data = response.json()
+
+            if response.status_code == 200:
+                return data  # Should include list of tools for this app
+            else:
+                return {"error": data.get("error", "Unknown error occurred")}
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+        
+
+    def get_tool_fields(self, slug_name: str) -> Dict[str, Any]:
+        """
+        Fetch required input fields for a specific tool identified by its slug.
+
+        Args:
+            slug_name (str): Tool slug name (e.g., 'FIRECRAWL_SEARCH', 'NOTION_CREATE_PAGE').
+
+        Returns:
+            Dict[str, Any]: Field definitions including type, required, and examples.
+        """
+        if not slug_name:
+            return {"error": "slug_name is required."}
+
+        url = f"{self.base_url}/fields"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        params = {"slug_name": slug_name}
+
+        try:
+            response = requests.post(url, headers=headers, params=params, json={})
+            data = response.json()
+
+            if response.status_code == 200:
+                return data.get("fields", data)
+            else:
+                return {"error": data.get("error", "Unknown error occurred")}
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def execute_tool(self, slug: str, arguments: dict) -> Dict[str, Any]:
+        """
+        Execute a Composio tool by slug name.
+
+        Args:
+            slug (str): The slug/name of the tool to execute (e.g., "FIRECRAWL_SEARCH").
+            arguments (dict): Dictionary of input parameters required by the tool.
+
+        Returns:
+            Dict[str, Any]: Execution result or error details.
+        """
+        if not slug:
+            return {"error": "Tool slug is required."}
+
+        url = f"{self.base_url}/execute"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        payload = {
+            "slug": slug,
+            "arguments": arguments
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            data = response.json()
+
+            if response.status_code == 200 and data.get("success"):
+                return data["result"]
+
+            return {"error": data.get("error", data)}
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+        
+        
+    def get_workflows(self) -> Dict[str, Any]:
+        """
+        Retrieve all workflows created by the authenticated user.
+
+        Returns:
+            Dict[str, Any]: A list of saved workflows and count.
+        """
+        url = f"{self.base_url}/get_workflows"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.get(url, headers=headers)
+            data = response.json()
+
+            if response.status_code == 200:
+                return {
+                    "templates": data.get("templates", []),
+                    "workflows_count": data.get("workflows_count", 0)
+                }
+            else:
+                return {"error": data.get("error", "Failed to fetch workflows")}
+        except requests.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def publish_workflow(
+        self,
+        flowname: str,
+        flowDesc: str,
+        flowId: str,
+        session_id: str,
+        username: str
+    ) -> Dict[str, Any]:
+        """
+        Publish a workflow template so it becomes publicly accessible.
+        """
+
+        url = f"{self.base_url}/publish_workflow"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Username": username,   
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "workflow_name": flowname,
+            "workflow_description": flowDesc,
+            "workflow_id": flowId,
+            "session_id": session_id
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            return response.json()
+        except Exception as e:
+            return {"error": str(e)}
+
+    def delete_model(self, model_id: str) -> Dict[str, Any]:
+        """
+        Delete a saved model for the authenticated user.
+
+        Args:
+            model_id (str): The ID of the model to delete.
+
+        Returns:
+            Dict[str, Any]: Response containing success message or error details.
+        """
+        if not model_id:
+            return {"error": "model_id is required"}
+
+        url = f"{self.base_url}/delete_model/{model_id}"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
+        try:
+            response = requests.delete(url, headers=headers)
+            data = response.json()
+
+            if response.status_code == 200:
+                return {"message": data.get("message")}
+            else:
+                return {"error": data.get("error", "Unknown error"), "status": response.status_code}
+
+        except requests.exceptions.RequestException as e:
+            return {"error": f"Request failed: {str(e)}"}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def get_user_summary(self) -> Dict[str, Any]:
+        """
+        Fetch the user's summary (workflows, tools, models) from the backend.
+
+        Returns:
+            dict: Summary data or error details.
+        """
+        url = f"{self.base_url}/get-user-summary"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {
+                "error": "HTTP error occurred",
+                "details": str(http_err),
+                "status_code": response.status_code if 'response' in locals() else None
+            }
+        except Exception as e:
+            return {"error": "Failed to fetch user summary", "details": str(e)}
+
+    def get_all_prompt_data(self) -> Dict[str, Any]:
+        """
+        Fetch all saved prompts for the authenticated user.
+
+        Returns:
+            Dict[str, Any]: List of all prompt records or an error message.
+        """
+        url = f"{self.base_url}/show_all_prompt_data"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {
+                "error": "HTTP error occurred",
+                "details": str(http_err),
+                "status_code": response.status_code if 'response' in locals() else None
+            }
+        except Exception as e:
+            return {"error": "Failed to fetch prompt data", "details": str(e)}
+    
+    def run_prompt_test_copy(
+        self,
+        prompt: list,
+        session_id: str,
+        model_data: dict,
+        selected_model: str,
+        system_message: list = None,
+        temperature: float = 0.7,
+        top_p: int = 50,
+        max_tokens: int = 1024,
+        json_response: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Test prompts against selected LLM model.
+
+        Args:
+            prompt (list): List of user prompts.
+            session_id (str): Active session ID.
+            model_data (dict): Must contain id, client, base_url.
+            selected_model (str): Model name to use.
+            system_message (list, optional): Defaults to AI assistant role.
+            temperature (float)
+            top_p (int)
+            max_tokens (int)
+            json_response (bool)
+
+        Returns:
+            Dict[str, Any]: JSON response with answer or error.
+        """
+
+        url = f"{self.base_url}/prompt_testing_copy"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "prompt": prompt,
+            "session_id": session_id,
+            "model": model_data,
+            "selected_model": selected_model,
+            "system_message": system_message or ["You are a Helpful AI Assistant"],
+            "temperature": temperature,
+            "top_p": top_p,
+            "tokens": max_tokens,
+            "json": json_response
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            return {"error": "HTTP error occurred", "details": str(http_err)}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def user_details(self, username: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Fetch the authenticated user's profile details.
+
+        Args:
+            username (Optional[str]): Optional username header to include.
+                                    If not provided, defaults to 'Unknown'.
+
+        Returns:
+            dict: Contains the user details or error information.
+        """
+        url = f"{self.base_url}/profile/user-details"
+
+        # Build headers safely
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Username": username or "Unknown"
+        }
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            # Return structured response so tests can check exact failure type
+            return {
+                "error": "HTTP error occurred",
+                "details": str(http_err),
+                "status_code": response.status_code if 'response' in locals() else None
+            }
+        except requests.exceptions.RequestException as req_err:
+            # Covers timeouts, connection issues, etc.
+            return {"error": "Request failed", "details": str(req_err)}
+        except Exception as e:
+            # Generic safeguard
+            return {"error": "Unexpected failure", "details": str(e)}
+
+
+
+
