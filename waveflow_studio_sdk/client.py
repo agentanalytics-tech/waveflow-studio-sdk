@@ -457,6 +457,32 @@ class WaveFlowStudio:
                 "details": str(e)
             }
 
+    def return_models(self, file_name: str) -> dict:
+        """
+        Fetch model configurations by file name.
+        """
+        url = f"{self.base_url}/return_models"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        body = {"file_name": file_name}
+
+        try:
+            response = requests.post(url, headers=headers, json=body)
+            return response.json()
+        except Exception as e:
+            return {"error": str(e)}
+
+
+    def return_agents(self, file_name: str) -> dict:
+        """
+        Fetch agent configurations by file name.
+        """
+        url = f"{self.base_url}/return_agents"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        body = {"file_name": file_name}
+
+        try:
+            response = requests.post(url, headers=headers, json=body)
+            return response.json()
     def get_agents_data(self, session_id: str) -> Dict[str, Any]:
             """
             Fetch encrypted agent data for a given session.
@@ -665,6 +691,27 @@ class WaveFlowStudio:
             return {"error": str(e)}
 
 
+    def return_workflows(self, file_name: str) -> dict:
+        """
+        Fetch workflow data from a local JSON file on the backend.
+
+        Parameters:
+            file_name (str): The name of the JSON file to read (e.g., 'workflows.json').
+
+        Returns:
+            dict: Parsed JSON content or an error message.
+        """
+        url = f"{self.base_url}/return_workflows"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        payload = {"file_name": file_name}
+
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            data = response.json()
+            if response.status_code == 200:
+                return data
+            else:
+                return {"error": f"Failed with status {response.status_code}", "response": data}
     def set_model(self, client: str, model_api_key: str, model_name: str, base_url: str, date: str, description: Optional[str] = None) -> Dict[str, Any]:
         """
         Saves model details to the server.
