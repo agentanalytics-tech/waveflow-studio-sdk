@@ -457,6 +457,31 @@ class WaveFlowStudio:
                 "details": str(e)
             }
 
+    def get_agents_data(self, session_id: str) -> Dict[str, Any]:
+            """
+            Fetch encrypted agent data for a given session.
+
+            Args:
+                session_id (str): The session ID associated with the agents.
+
+            Returns:
+                Dict[str, Any]: Encrypted agent data or an error message.
+            """
+            url = f"{self.base_url}/agent_data"
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            payload = {"session_id": session_id}
+
+            try:
+                response = requests.post(url, headers=headers, json=payload)
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    return {
+                        "error": f"Failed with status {response.status_code}",
+                        "response": response.text
+                    }
+            except Exception as e:
+                return {"error": str(e)}
     def get_session_data(self) -> Dict[str, Any]:
         """
         Fetch all session summaries for the authenticated user.
