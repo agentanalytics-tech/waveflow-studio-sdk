@@ -1,37 +1,3 @@
-
-
-# build/lib/waveflow_studio_sdk/__init__.py
- 
-# build/lib/waveflow_studio_sdk/client.py
-# test.py
-
-# waveflow_studio_sdk.egg-info/PKG-INFO
-
- 
-# waveflow_studio_sdk.egg-info/SOURCES.txt
-
-# waveflow_studio_sdk.egg-info/dependency_links.txt
-# waveflow_studio_sdk.egg-info/not-zip-safe
-# waveflow_studio_sdk.egg-info/requires.txt
-# waveflow_studio_sdk.egg-info/top_level.txt
- 
-# waveflow_studio_sdk/__pycache__/__init__.cpython-312.pyc
-
- 
-# waveflow_studio_sdk/__pycache__/client.cpython-312.pyc
-# Build outputs
-# build/
-
-# # Test file
-# test.py
-
-# # Egg-info directory
-# waveflow_studio_sdk.egg-info/
-
-# # Python caches & bytecode
-# __pycache__/
-# *.pyc
-
 build/
 waveflow_studio_sdk.egg-info/
 waveflow_studio_sdk/__pycache__/
@@ -39,3 +5,5 @@ test.py
 dist
 .vs
 workflow.json
+__pycache__/
+*.pyc

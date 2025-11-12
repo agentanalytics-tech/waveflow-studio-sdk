@@ -483,6 +483,9 @@ class WaveFlowStudio:
         try:
             response = requests.post(url, headers=headers, json=body)
             return response.json()
+        except Exception as e:
+            return {"error": str(e)}
+
     def get_agents_data(self, session_id: str) -> Dict[str, Any]:
             """
             Fetch encrypted agent data for a given session.
@@ -712,6 +715,9 @@ class WaveFlowStudio:
                 return data
             else:
                 return {"error": f"Failed with status {response.status_code}", "response": data}
+        except Exception as e:
+            return {"error": str(e)}
+
     def set_model(self, client: str, model_api_key: str, model_name: str, base_url: str, date: str, description: Optional[str] = None) -> Dict[str, Any]:
         """
         Saves model details to the server.
