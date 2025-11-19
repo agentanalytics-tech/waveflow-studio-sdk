@@ -2589,3 +2589,95 @@ class WaveFlowStudio:
                 return self._handle_response(response)
             except requests.exceptions.RequestException as e:
                 raise Exception(f"Connection error: {e}")
+    def test_automation_workflow(
+            self,
+            session_id: str,
+            query: str,
+            cycle_type: str = "immediate",
+            config: Optional[Dict[str, Any]] = None,
+            filenames: Optional[List[str]] = None
+        ) -> Dict[str, Any]:
+            """
+            Triggers or schedules a test automation workflow.
+            This is an authenticated POST endpoint.
+
+            Args:
+                session_id (str): The session ID associated with the agents.
+                query (str): The natural language query/instruction for the automation.
+                cycle_type (str, optional): Execution type. Options: "immediate", 
+                                        "regular_interval", or "custom". Defaults to "immediate".
+                config (Optional[Dict[str, Any]]): Configuration for scheduling (e.g., repeat interval, 
+                                                start dates). Defaults to {}.
+                filenames (Optional[List[str]]): A list of filenames (strings) that have previously 
+                                            been uploaded to the staging area. Defaults to [].
+
+            Returns:
+                Dict[str, Any]: The API response containing schedule status and job details.
+
+            Raises:
+                Exception: If the API call fails.
+                ValueError: For missing required arguments.
+            """
+            if not session_id: raise ValueError("session_id is required.")
+            if not query: raise ValueError("query is required.")
+
+            url = f"{self.base_url}/test-automation-workflow"
+
+            # The endpoint expects Form data where 'config' and 'filenames' 
+            # are JSON-serialized strings.
+            import json
+            
+            payload = {
+                "session_id": session_id,
+                "query": query,
+                "cycle_type": cycle_type,
+                "config": json.dumps(config if config is not None else {}),
+                "filenames": json.dumps(filenames if filenames is not None else [])
+            }
+
+            try:
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+                # Use 'data' instead of 'json' because the endpoint uses Form(...)
+                response = requests.post(url, data=payload, headers=headers)
+                return self._handle_response(response)
+            except requests.exceptions.RequestException as e:
+                raise Exception(f"Connection error: {e}")
+    def set_model_from_file(self, file_path: str) -> Dict[str, Any]:
+            """
+            Uploads a JSON file to configure and save a new AI model definition.
+            This is an authenticated POST endpoint.
+
+            Args:
+                file_path (str): The local path to the .json file containing the model details.
+                                The JSON must contain: id, client, api_key, model_name,
+                                base_url, description, and date.
+
+            Returns:
+                Dict[str, Any]: The API response containing the saved model details.
+
+            Raises:
+                FileNotFoundError: If the provided file_path does not exist.
+                Exception: If the API call fails or returns an error.
+            """
+            import os
+            
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"The file '{file_path}' was not found.")
+
+            url = f"{self.base_url}/set_model_from_file"
+            
+            # We do NOT set 'Content-Type' header manually when sending files; 
+            # the requests library handles the boundary generation automatically.
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+
+            try:
+                with open(file_path, 'rb') as f:
+                    # 'file' matches the parameter name in FastAPI: file: UploadFile = File(...)
+                    # We explicitly set the filename and mime type
+                    files = {'file': (os.path.basename(file_path), f, 'application/json')}
+                    
+                    response = requests.post(url, headers=headers, files=files)
+                    return self._handle_response(response)
+                    
+            except requests.exceptions.RequestException as e:
+                raise Exception(f"Connection error: {e}")
